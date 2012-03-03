@@ -1,3 +1,5 @@
+from os.path import expanduser
+
 from django.conf.urls.defaults import patterns, url
 from django.contrib.admin.models import LogEntry
 from django.utils import simplejson as json
@@ -7,6 +9,8 @@ from django.utils.translation import ugettext_lazy as _
 from lemon import extradmin as admin
 from lemon.dashboard import views
 from lemon.dashboard.base import dashboard, Widget
+
+from psutil import phymem_usage, disk_usage
 
 
 class DashboardAdmin(admin.AppAdmin):
@@ -100,6 +104,46 @@ class AdminLog(Widget):
         )
 
 
+class AdminSysMon(Widget):
+
+    title = _(u'System monitor')
+    description = _(u'System information about the server')
+    template_name = 'dashboard/admin_sysmon.html'
+    backbone_view_name = u'AdminSysMon'
+
+    def memory_info(self):
+        phymem = phymem_usage()
+        return {
+            'total': phymem.total,
+            'used': phymem.used,
+            'free': phymem.free,
+            'percent': phymem.percent
+        }
+
+    def disk_info(self):
+        disk = disk_usage(expanduser('~'))
+        return {
+            'total': disk.total,
+            'used': disk.used,
+            'free': disk.free,
+            'percent': disk.percent
+        }
+
+    def database_info(self):
+        return _(u'nothing now')
+
+    def get_raw(self):
+        info = {}
+        info.update({'memory': self.memory_info()})
+        info.update({'disk': self.disk_info()})
+        info.update({'database': self.database_info()})
+        return info
+
+    def get_json(self):
+        return json.dumps(self.get_raw())
+
+
 admin.site.register_app('dashboard', DashboardAdmin)
 dashboard.register('admin_apps', AdminApps)
 dashboard.register('admin_log', AdminLog)
+dashboard.register('admin_sysmon', AdminSysMon)
